@@ -1,24 +1,35 @@
-import { Bolt, Box, Cylinder, Decal, Rod } from './Primitives';
+import { Bolt, Box, Cylinder, Decal, Rod, materials, type MaterialName } from './Primitives';
 import { useSimulation } from '../stores/simulationStore';
+import { mechanicalConfig } from '../config/roverConfig';
+import { createChassisDeck } from './geometry';
+import { useGeometry } from './useGeometry';
+
+function Deck({ y, thickness, material, size = [2.64, 1.4] }: { y: number; thickness: number; material: MaterialName; size?: [number, number] }) {
+  const c = mechanicalConfig.chassis;
+  const geometry = useGeometry(`deck:${size}:${thickness}`, () => createChassisDeck(...size, c.spineHalfWidth, c.centerHalfLength, thickness));
+  return <mesh name="notched-chassis-deck" position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={geometry} material={materials[material]} dispose={null} castShadow receiveShadow />;
+}
 
 export function Chassis() {
   const exploded = useSimulation(s => s.exploded);
   return <group>
-    <Box size={[2.58, 0.17, 1.3]} position={[0, 0.54, 0]} material="black" />
-    <Box size={[2.64, 0.065, 1.4]} position={[0, 0.65, 0]} material="silver" />
-    <Box size={[2.26, 0.24, 1.24]} position={[0, 0.8, 0]} material="dark" />
-    <Box size={[2.56, 0.048, 1.44]} position={[0, 0.955 + (exploded ? 0.25 : 0), 0]} material="edge" />
+    <Deck y={0.54} thickness={0.17} material="black" size={[2.58, 1.3]} />
+    <Deck y={0.65} thickness={0.065} material="silver" />
+    <Box size={[1.12, 0.24, 1.24]} position={[0, 0.8, 0]} material="dark" />
+    {[-1, 1].map(s => <Box key={s} size={[0.67, 0.24, 0.8]} position={[s * 0.925, 0.8, 0]} material="dark" />)}
+    <Deck y={0.955 + (exploded ? 0.25 : 0)} thickness={0.048} material="edge" size={[2.56, 1.44]} />
     <group position={[0, exploded ? 0.3 : 0, 0]}>
       {[-1, 1].map(s => <group key={s}>
-        <Box size={[2.68, 0.085, 0.085]} position={[0, 0.54, s * 0.72]} />
+        <Box size={[1.12, 0.085, 0.085]} position={[0, 0.54, s * 0.72]} />
+        <Box size={[2.68, 0.07, 0.06]} position={[0, 0.54, s * 0.39]} />
         <Box size={[2.58, 0.045, 0.045]} position={[0, 1.03, s * 0.73]} material="edge" />
         <Box size={[1.12, 0.26, 0.05]} position={[0, 0.79, s * 0.645]} material="black" />
         <Decal label="ZXAJ" position={[0, 0.8, s * 0.675]} rotation={[0, s < 0 ? Math.PI : 0, 0]} width={0.71} height={0.19} />
         <Decal label="AUTONOMOUS SYSTEMS" position={[0, 0.66, s * 0.755]} rotation={[0, s < 0 ? Math.PI : 0, 0]} width={0.75} height={0.038} color="#6c8896" />
-        {[-1.16, -0.7, 0.7, 1.16].map(x => <group key={x}>
+        {[-0.52, 0.52].map(x => <group key={x}>
           <Box size={[0.045, 0.36, 0.06]} position={[x, 0.77, s * 0.67]} material="silver" />
-          <Bolt position={[x, 0.94, s * 0.76]} scale={0.8} />
-          <Bolt position={[x, 0.6, s * 0.76]} scale={0.8} />
+          <Bolt position={[x, 0.92, s * 0.707]} normal={[0, 0, s]} scale={0.8} />
+          <Bolt position={[x, 0.62, s * 0.707]} normal={[0, 0, s]} scale={0.8} />
         </group>)}
       </group>)}
     </group>

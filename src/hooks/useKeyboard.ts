@@ -14,6 +14,7 @@ export function useKeyboard() {
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches('input, textarea, select, [contenteditable]')) return;
       const k = e.key.toLowerCase();
+      if ((k === ' ' || k.startsWith('arrow')) && (e.target as HTMLElement).closest('button')) return;
       if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) {
         e.preventDefault();
         if (k === ' ') { useSimulation.getState().stop(true); keys.clear(); return; }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Activity, Box, ChevronDown, CircleHelp, Clock3, Expand, Focus, Grid2X2, Layers3, MousePointer2, MoveUpRight, Navigation, Orbit, PanelLeftClose, PanelRight, Pause, Play, Radar, RotateCcw, RotateCw, ScanLine, ShieldCheck, Video, X } from 'lucide-react';
+import { Activity, Box, ChevronDown, CircleHelp, Clock3, Expand, Focus, Grid2X2, Layers3, MousePointer2, MoveUpRight, Navigation, Orbit, PanelLeftClose, PanelRight, Pause, Play, Radar, RotateCcw, RotateCw, ScanLine, Settings2, ShieldCheck, Video, X } from 'lucide-react';
 import { RoverScene } from '../scene/RoverScene';
 import { useSimulation } from '../stores/simulationStore';
 import { LeftPanel } from '../panels/LeftPanel';
 import { RightPanel, type WorkspaceTab } from '../panels/RightPanel';
 import { ConsolePanel } from '../panels/ConsolePanel';
-import { IconButton } from '../components/UI';
+import { IconButton, Toggle } from '../components/UI';
+import { ModelDisplayControls } from '../components/ModelDisplayControls';
 import { useKeyboard } from '../hooks/useKeyboard';
 import type { ViewPreset } from '../types';
 
@@ -16,6 +17,8 @@ const formatTime = (seconds: number) => `${String(Math.floor(seconds / 3600)).pa
 export function App() {
   useKeyboard();
   const [tab, setTab] = useState<WorkspaceTab>('model'), [left, setLeft] = useState(true), [right, setRight] = useState(false), [help, setHelp] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const exploded = useSimulation(s => s.exploded);
   const paused = useSimulation(s => s.paused), emergency = useSimulation(s => s.emergency), elapsed = useSimulation(s => s.elapsed);
   const v = useSimulation(s => s.vehicle), view = useSimulation(s => s.view), wireframe = useSimulation(s => s.wireframe);
   const autoRotate = useSimulation(s => s.autoRotate), timeScale = useSimulation(s => s.timeScale), showLidar = useSimulation(s => s.showLidar), showGrid = useSimulation(s => s.showGrid);
@@ -44,8 +47,9 @@ export function App() {
       <section className="viewport" aria-label="三维无人车场景">
         <RoverScene />
         <div className="viewport-top"><div className="scene-breadcrumb"><span className="green-dot" /><span>{tab === 'model' ? '模型空间' : tab === 'navigation' ? '导航空间' : '传感器空间'}</span><ChevronDown size={11} /><span className="scene-divider">/</span><span>ZXAJ-R01</span></div><span className="render-badge">{view === 'perspective' ? 'PERSPECTIVE' : view.toUpperCase()} <span>·</span> PBR</span></div>
-        <div className="scene-toolbar"><div className="toolbar-group"><IconButton label={left ? '收起模型面板' : '展开模型面板'} icon={PanelLeftClose} active={left} onClick={() => setLeft(!left)} /><i /><IconButton label="环绕观察" icon={Orbit} active={editMode === 'orbit'} onClick={() => patch({ editMode: 'orbit' })} /><IconButton label="自动旋转" icon={RotateCw} active={autoRotate} onClick={() => patch({ autoRotate: !autoRotate })} /><IconButton label="线框模式" icon={ScanLine} active={wireframe} onClick={() => patch({ wireframe: !wireframe })} /><i /><IconButton label="地面网格开关" icon={Grid2X2} active={showGrid} onClick={() => patch({ showGrid: !showGrid })} /><IconButton label="激光雷达扫描" icon={Radar} active={showLidar} onClick={() => patch({ showLidar: !showLidar })} /></div>
+        <div className="scene-toolbar"><div className="toolbar-group"><IconButton className="left-panel-toggle" label={left ? '收起模型面板' : '展开模型面板'} icon={PanelLeftClose} active={left} onClick={() => setLeft(!left)} /><i className="left-panel-toggle" /><IconButton label="环绕观察" icon={Orbit} active={editMode === 'orbit'} onClick={() => patch({ editMode: 'orbit' })} /><IconButton label="自动旋转" icon={RotateCw} active={autoRotate} onClick={() => patch({ autoRotate: !autoRotate })} /><IconButton label="线框模式" icon={ScanLine} active={wireframe} onClick={() => patch({ wireframe: !wireframe })} /><i /><IconButton label="地面网格开关" icon={Grid2X2} active={showGrid} onClick={() => patch({ showGrid: !showGrid })} /><IconButton label="激光雷达扫描" icon={Radar} active={showLidar} onClick={() => patch({ showLidar: !showLidar })} /><IconButton label="模型显示设置" icon={Settings2} active={settings} aria-expanded={settings} aria-controls="model-settings" onClick={() => setSettings(!settings)} /></div>
           <div className="toolbar-group view-select"><Focus size={14} /><select aria-label="场景视角" value={view} onChange={e => setView(e.target.value as ViewPreset)}>{views.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><IconButton label="恢复默认视角" icon={RotateCcw} onClick={() => setView('perspective')} /></div></div>
+        {settings && <div id="model-settings" className="model-settings" role="region" aria-label="模型显示设置" onKeyDown={e => { if (e.key === 'Escape') setSettings(false); }}><div className="model-settings-title"><strong>模型显示</strong><IconButton label="关闭显示设置" icon={X} onClick={() => setSettings(false)} /></div><ModelDisplayControls /><div className="setting-row"><span><Layers3 size={14} />结构分解</span><Toggle label="结构分解" checked={exploded} onChange={() => patch({ exploded: !exploded })} /></div></div>}
         {view === 'camera' && <div className="camera-overlay"><span><Video size={15} />CAM 01 · 模拟摄像头画面</span><button onClick={() => setView('perspective')} aria-label="关闭模拟摄像头"><X size={14} /></button><div className="camera-reticle" /></div>}
         {editMode !== 'orbit' && <div className="edit-indicator"><MousePointer2 size={13} />{editMode === 'goal' ? '目标点编辑' : editMode === 'start' ? '起点编辑' : '障碍物放置'}<button aria-label="结束地图编辑" onClick={() => patch({ editMode: 'orbit' })}><X size={13} /></button></div>}
         <div className="model-caption"><span className="model-eyebrow">AUTONOMOUS ROVER</span><h1>ZXAJ<span> — R01</span></h1><div><span className="model-status-dot" />{tab === 'model' ? '四轮驱动 · 独立悬架' : tab === 'navigation' ? 'A* 网格导航 · 障碍物感知' : '虚拟传感器 · 10 Hz 采样'}</div></div>

@@ -41,7 +41,7 @@ const sceneInfo = () => page.evaluate(async () => {
   return {
     bounds: { minX: Math.min(...points.map(p => p.x)), maxX: Math.max(...points.map(p => p.x)), minY: Math.min(...points.map(p => p.y)), maxY: Math.max(...points.map(p => p.y)) },
     camera: camera.position.toArray(), objects,
-    draws: gl.info.render.calls, triangles: gl.info.render.triangles,
+    ...window.__roverQA.mainRender,
   };
 });
 const assertFraming = info => {
@@ -53,6 +53,40 @@ const state = () => page.evaluate(async () => {
   const s = useSimulation.getState();
   return { x: s.vehicle.x, z: s.vehicle.z, speed: s.vehicle.speed, wheelAngle: s.vehicle.wheelAngle, elapsed: s.elapsed, emergency: s.emergency, paused: s.paused, navStatus: s.navStatus, path: s.path.length };
 });
+const modelInfo = () => page.evaluate(() => {
+  const { _roots, useSimulation } = window.__roverQA;
+  const { scene, gl } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+  const rover = scene.getObjectByName('ZXAJ-R01');
+  const counts = { suspension: 0, cameras: 0, bumperLenses: 0 };
+  rover.traverse(o => {
+    if (/^suspension-/.test(o.name)) counts.suspension++;
+    if (/^camera-module-/.test(o.name)) counts.cameras++;
+    if (/^bumper-lens-/.test(o.name)) counts.bumperLenses++;
+  });
+  const panels = rover.getObjectByName('body-panels');
+  const shellMaterials = new Set();
+  panels?.traverse(o => { if (o.isMesh && o.renderOrder === 2) shellMaterials.add(o.material); });
+  return {
+    ...counts, bodyMode: useSimulation.getState().bodyMode, detailLevel: useSimulation.getState().detailLevel,
+    panels: !!panels, transparentPanels: shellMaterials.size > 0 && [...shellMaterials].every(m => m.transparent && !m.depthWrite && m.opacity < 0.5),
+    pan: rover.getObjectByName('camera-pan')?.rotation.y,
+    memory: { ...gl.info.memory }, ...window.__roverQA.mainRender,
+  };
+});
+const capture = name => page.screenshot({ path: fileURLToPath(new URL(`${name}.png`, output)) });
+const closeup = async (position, target, name) => {
+  await page.evaluate(({ position, target }) => {
+    const { _roots } = window.__roverQA;
+    const { camera, controls } = _roots.get(document.querySelector('.viewport canvas')).store.getState();
+    controls.dispatchEvent({ type: 'start' });
+    controls.minDistance = 1;
+    camera.position.set(...position);
+    controls.target.set(...target);
+    controls.update();
+  }, { position, target });
+  await waitForFrames(3);
+  await capture(name);
+};
 try {
   await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
   await page.locator('.scene-loading').waitFor({ state: 'hidden', timeout: 45000 });
@@ -68,6 +102,16 @@ try {
       ...await loaded('/src/stores/simulationStore.ts'),
       ...await loaded('/node_modules/.vite/deps/@react-three_fiber.js'),
       ...await loaded('/node_modules/.vite/deps/three.js'),
+    };
+    const { gl, scene } = window.__roverQA._roots.get(document.querySelector('.viewport canvas')).store.getState();
+    const render = gl.render;
+    // Capture the main pass before the gizmo renders its separate scene and resets the counters.
+    gl.render = function (renderScene, camera) {
+      const result = render.call(this, renderScene, camera);
+      if (renderScene === scene) {
+        window.__roverQA.mainRender = { draws: gl.info.render.calls, triangles: gl.info.render.triangles };
+      }
+      return result;
     };
   });
   await waitForFrames(5);
@@ -88,6 +132,70 @@ try {
     return { width: canvas.width, height: canvas.height, colors: colors.size, opaque, light };
   });
   if (report.canvas.colors < 40 || report.canvas.light < 30) throw new Error('Canvas is blank or model is not visible');
+  report.model = { full: await modelInfo() };
+  if (report.model.full.suspension !== 4 || report.model.full.cameras !== 4 || report.model.full.bumperLenses !== 2) throw new Error('Mechanical assembly count changed');
+  await page.getByRole('button', { name: '裸露外壳模式', exact: true }).click();
+  await waitForFrames(3);
+  report.model.bare = await modelInfo();
+  if (report.model.bare.panels) throw new Error('Bare mode still has body panels');
+  await capture('bare');
+  await page.getByRole('button', { name: '透明外壳模式', exact: true }).click();
+  await waitForFrames(3);
+  report.model.transparent = await modelInfo();
+  if (!report.model.transparent.panels || !report.model.transparent.transparentPanels) throw new Error('Transparent mode material/depth handling failed');
+  await capture('transparent');
+  await page.getByRole('button', { name: '裸露外壳模式', exact: true }).click();
+  await page.getByRole('button', { name: '隐藏全地形驱动轮', exact: true }).click();
+  await closeup([2.8, 1.35, 2.4], [0.975, 0.65, 0.62], 'suspension-closeup');
+  await page.getByRole('button', { name: '显示全地形驱动轮', exact: true }).click();
+  await closeup([2.4, 2.05, 2.4], [0.85, 1.25, 0], 'camera-closeup');
+  report.model.pan = [];
+  for (const cameraPan of [-35, 35, 0]) {
+    await page.evaluate(cameraPan => window.__roverQA.useSimulation.getState().patch({ cameraPan }), cameraPan);
+    await waitForFrames(2);
+    const info = await modelInfo();
+    if (Math.abs(info.pan - cameraPan * Math.PI / 180) > 1e-6) throw new Error('Camera pan no longer follows controls');
+    report.model.pan.push(info.pan);
+    if (cameraPan) await capture(`camera-pan-${cameraPan}`);
+  }
+  await page.getByRole('button', { name: '完整外壳模式', exact: true }).click();
+  await waitForFrames(3);
+  const detailComparison = await modelInfo();
+  await page.getByRole('button', { name: '性能档位', exact: true }).click();
+  await waitForFrames(4);
+  report.model.performance = await modelInfo();
+  report.model.detailComparison = detailComparison;
+  if (report.model.performance.triangles >= detailComparison.triangles * 0.85) throw new Error('Performance profile does not meaningfully reduce geometry');
+  // Warm both profiles before comparing renderer-owned resource counts.
+  await page.getByRole('button', { name: '细节档位', exact: true }).click();
+  await waitForFrames(4);
+  const resourceStart = await modelInfo();
+  for (let cycle = 0; cycle < 3; cycle++) {
+    for (const mode of ['裸露', '透明', '完整']) {
+      await page.getByRole('button', { name: `${mode}外壳模式`, exact: true }).click();
+      await waitForFrames(2);
+    }
+    for (const part of ['车体与金属底盘', '全地形驱动轮', '独立悬架系统', '多目视觉传感器']) {
+      await page.getByRole('button', { name: `隐藏${part}`, exact: true }).click();
+      await waitForFrames(1);
+      await page.getByRole('button', { name: `显示${part}`, exact: true }).click();
+    }
+    await page.getByRole('button', { name: '性能档位', exact: true }).click();
+    await waitForFrames(3);
+    await page.getByRole('button', { name: '细节档位', exact: true }).click();
+    await waitForFrames(4);
+  }
+  const resourceEnd = await modelInfo();
+  report.model.resources = { before: resourceStart.memory, after: resourceEnd.memory, cycles: 3 };
+  if (resourceEnd.memory.geometries > resourceStart.memory.geometries + 5 || resourceEnd.memory.textures > resourceStart.memory.textures + 1) throw new Error('Repeated model switches retain GPU resources');
+  await page.getByRole('switch', { name: '结构分解', exact: true }).click();
+  await waitForFrames(3);
+  await capture('exploded');
+  await page.getByRole('switch', { name: '结构分解', exact: true }).click();
+  await page.getByRole('button', { name: '性能档位', exact: true }).click();
+  await page.getByRole('button', { name: '恢复默认视角', exact: true }).click();
+  await page.evaluate(() => document.activeElement?.blur());
+  await waitForFrames(8);
   const before = await state();
   await page.keyboard.down('w');
   report.keyDown = await page.evaluate(() => {
@@ -158,6 +266,14 @@ try {
   if (await page.locator('.obstacle-list > button').count() !== 2) throw new Error('Obstacle deletion failed');
   await page.getByRole('button', { name: '重置仿真', exact: true }).click();
   await page.getByRole('button', { name: '数字样机', exact: true }).click();
+  await page.setViewportSize({ width: 1100, height: 850 });
+  await waitForFrames(8);
+  await capture('compact-desktop');
+  report.compact = await page.evaluate(() => {
+    const groups = [...document.querySelectorAll('.scene-toolbar > .toolbar-group')].map(el => el.getBoundingClientRect());
+    return { toolbarOverlap: groups[0].right > groups[1].left, overflow: document.documentElement.scrollWidth > innerWidth };
+  });
+  if (report.compact.toolbarOverlap || report.compact.overflow) throw new Error('Compact desktop toolbar overlaps');
   await page.setViewportSize({ width: 390, height: 844 });
   await waitForFrames(8);
   await page.screenshot({ path: fileURLToPath(new URL('mobile.png', output)) });
@@ -168,6 +284,13 @@ try {
     viewport: (() => { const r = document.querySelector('.viewport').getBoundingClientRect(); return { width: r.width, height: r.height }; })(),
   }));
   if (report.mobile.scrollWidth > report.mobile.width) throw new Error('Mobile horizontal overflow');
+  await page.getByRole('button', { name: '模型显示设置', exact: true }).click();
+  const settings = page.locator('#model-settings');
+  await settings.getByRole('button', { name: '透明外壳模式', exact: true }).click();
+  await waitForFrames(2);
+  if ((await modelInfo()).bodyMode !== 'transparent') throw new Error('Mobile model settings failed');
+  await capture('mobile-settings');
+  await settings.getByRole('button', { name: '关闭显示设置', exact: true }).click();
   await page.getByRole('button', { name: '显示控制面板', exact: true }).click();
   if (!(await page.locator('.right-panel').isVisible())) throw new Error('Mobile control drawer failed');
   report.errors = errors;

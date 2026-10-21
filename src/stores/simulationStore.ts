@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ControlInput, EditMode, LogEntry, NavigationStatus, Obstacle, Point2, SensorReading, VehicleState, ViewPreset } from '../types';
-import { initialObstacles, roverConfig as c } from '../config/roverConfig';
+import { initialObstacles, roverConfig as c, type BodyMode, type DetailLevel } from '../config/roverConfig';
 import { initialVehicle } from '../simulation/MotionModel';
 import { planPath } from '../simulation/PathPlanner';
 
@@ -9,6 +9,7 @@ interface SimulationStore {
   mode: 'manual' | 'auto'; speedLimit: number; elapsed: number; timeScale: number;
   view: ViewPreset; viewRevision: number; autoRotate: boolean; wireframe: boolean; showLidar: boolean; showGrid: boolean;
   exploded: boolean; cameraPan: number; threshold: number; components: Record<string, boolean>; selectedPart: string;
+  bodyMode: BodyMode; detailLevel: DetailLevel;
   obstacles: Obstacle[]; showObstacles: boolean; selectedObstacle: string | null; editMode: EditMode;
   goal: Point2; path: Point2[]; pathIndex: number; navStatus: NavigationStatus; logs: LogEntry[];
   patch: (update: Partial<SimulationStore>) => void;
@@ -29,6 +30,7 @@ export const useSimulation = create<SimulationStore>((set, get) => ({
   speedLimit: 0.8, elapsed: 0, timeScale: 1,
   view: 'perspective', viewRevision: 0, autoRotate: false, wireframe: false,
   showLidar: false, showGrid: true, exploded: false, cameraPan: 0, threshold: 2,
+  bodyMode: 'full', detailLevel: 'detail',
   components: { chassis: true, wheels: true, suspension: true, gears: true, lidar: true, cameras: true },
   selectedPart: '', obstacles: initialObstacles, showObstacles: false, selectedObstacle: null, editMode: 'orbit',
   goal: { x: 7, z: -5 }, path: [], pathIndex: 1, navStatus: 'idle',

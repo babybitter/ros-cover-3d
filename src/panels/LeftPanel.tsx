@@ -1,6 +1,7 @@
 import { Box as BoxIcon, ChevronDown, ChevronRight, CircleDot, Cpu, Eye, EyeOff, Layers3, Radar, ScanLine, Settings2, Shield, Unplug, Video, Wrench } from 'lucide-react';
 import { useSimulation } from '../stores/simulationStore';
 import { PanelTitle, Toggle } from '../components/UI';
+import { ModelDisplayControls } from '../components/ModelDisplayControls';
 
 const parts = [
   { id: 'chassis', name: '车体与金属底盘', icon: BoxIcon, count: '01' },
@@ -8,7 +9,7 @@ const parts = [
   { id: 'suspension', name: '独立悬架系统', icon: Wrench, count: '04' },
   { id: 'gears', name: '机械传动齿轮组', icon: Settings2, count: '08' },
   { id: 'lidar', name: '360° 激光雷达', icon: Radar, count: '01' },
-  { id: 'cameras', name: '多目视觉传感器', icon: Video, count: '04' },
+  { id: 'cameras', name: '多目视觉传感器', icon: Video, count: '04+02' },
 ];
 export function LeftPanel() {
   const components = useSimulation(s => s.components), selected = useSimulation(s => s.selectedPart);
@@ -16,16 +17,17 @@ export function LeftPanel() {
   const patch = useSimulation(s => s.patch), wireframe = useSimulation(s => s.wireframe);
   return <aside className="left-panel">
     <PanelTitle aside={<span className="tiny-label">ASSEMBLY</span>}>模型结构</PanelTitle>
-    <div className="tree-root"><ChevronDown size={13} /><Layers3 size={15} /><strong>ZXAJ-R01</strong><span className="tree-count">22</span></div>
+    <div className="tree-root"><ChevronDown size={13} /><Layers3 size={15} /><strong>ZXAJ-R01</strong><span className="tree-count">24</span></div>
     <div className="parts-tree">
       {parts.map(({ id, name, icon: Icon, count }) => <div className={`part-row ${selected === id ? 'selected' : ''}`} key={id}>
         <button className="part-select" onClick={() => patch({ selectedPart: selected === id ? '' : id })}><span className="tree-branch" /><Icon size={15} /><span>{name}</span><small>{count}</small></button>
         <button title={components[id] ? `隐藏${name}` : `显示${name}`} aria-label={components[id] ? `隐藏${name}` : `显示${name}`} className={`part-eye ${components[id] ? '' : 'muted'}`} onClick={() => patch({ components: { ...components, [id]: !components[id] } })}>{components[id] ? <Eye size={13} /> : <EyeOff size={13} />}</button>
-        {selected === id && <div className="part-detail"><span>{id === 'lidar' ? '采样频率 10 Hz · 探测 7 m' : id === 'wheels' ? '半径 0.43 m · 八辐轮毂' : id === 'cameras' ? '三目立体视觉 + 前视镜头' : id === 'suspension' ? '螺旋弹簧 · 双连杆结构' : id === 'gears' ? '4 级联动 · 齿数比传动' : '铝合金框架 · 多层支撑'}</span></div>}
+        {selected === id && <div className="part-detail"><span>{id === 'lidar' ? '采样频率 10 Hz · 探测 7 m' : id === 'wheels' ? '半径 0.43 m · 八辐轮毂' : id === 'cameras' ? '4 组主摄像头 + 2 前部镜头' : id === 'suspension' ? '上下控制臂 · 弹簧减震总成' : id === 'gears' ? '4 级联动 · 齿数比传动' : '铝合金框架 · 多层支撑'}</span></div>}
       </div>)}
     </div>
     <div className="sidebar-section">
       <PanelTitle aside={<Settings2 size={14} />}>场景设置</PanelTitle>
+      <ModelDisplayControls />
       <div className="setting-row"><span><ScanLine size={14} />地面网格</span><Toggle label="地面网格" checked={grid} onChange={() => patch({ showGrid: !grid })} /></div>
       <div className="setting-row"><span><BoxIcon size={14} />环境障碍物</span><Toggle label="环境障碍物" checked={obstacles} onChange={() => patch({ showObstacles: !obstacles })} /></div>
       <div className="setting-row"><span><Layers3 size={14} />结构分解</span><Toggle label="结构分解" checked={exploded} onChange={() => patch({ exploded: !exploded })} /></div>
