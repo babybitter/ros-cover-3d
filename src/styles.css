@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+.mapping-camera{display:flex;gap:6px;align-items:center}
+.mapping-disclaimer{font-size:11px;color:#87ceba;margin-bottom:12px}
+.mapping-range{display:block;margin:20px 0}
+.mapping-status{display:flex;justify-content:space-between;font-size:9px;color:#8b9eac;margin:10px 0 15px}
+.mapping-status b{font-weight:400;color:#b5d5cf;margin-left:5px}
+.mapping-metrics{display:flex;flex-direction:column;gap:13px;border-top:1px solid #34404b;padding-top:16px;margin-top:20px;font-size:9px;color:#849baa}
+.mapping-metrics>span{display:flex;justify-content:space-between;gap:5px;flex-wrap:wrap}
+.mapping-metrics b{font:9px Consolas,monospace;color:#bfd6df}
+.mapping-error{color:#e19f9d;font-size:10px;overflow-wrap:anywhere}
+.offline-dot{width:4px;height:4px;background:#606b74;border-radius:50%}
+@media(max-width:740px){.workspace-tabs button{padding:0 8px!important;gap:4px!important;font-size:9px!important}.workspace-tabs button svg{width:12px}.workspace-tabs{min-width:0}.workspace-right{flex-shrink:0}}
+
 .model-display-controls fieldset{border:0;padding:0;margin:0 0 13px;min-width:0}
 .model-display-controls legend{font-size:10px;color:#9ba7b4;margin-bottom:8px}
 .model-display-controls .segmented button{width:0;flex:1;min-width:0}

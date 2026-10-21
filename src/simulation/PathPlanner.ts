@@ -1,4 +1,4 @@
-import { collides } from './CollisionDetector';
+import { collides, segmentCollides } from './CollisionDetector';
 import type { Obstacle, Point2 } from '../types';
 
 export interface GridMap { min: number; max: number; resolution: number }
@@ -9,11 +9,7 @@ export function planPath(map: GridMap, start: Point2, goal: Point2, obstacles: O
   const toCell = (p: Point2) => [Math.round((p.x - map.min) / map.resolution), Math.round((p.z - map.min) / map.resolution)];
   const toWorld = (x: number, z: number) => ({ x: map.min + x * map.resolution, z: map.min + z * map.resolution });
   const safe = (p: Point2) => p.x >= map.min + radius && p.z >= map.min + radius && p.x <= map.max - radius && p.z <= map.max - radius && !collides(p, obstacles, radius);
-  const segmentSafe = (a: Point2, b: Point2) => {
-    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.025));
-    for (let i = 0; i <= steps; i++) if (!safe({ x: a.x + (b.x - a.x) * i / steps, z: a.z + (b.z - a.z) * i / steps })) return false;
-    return true;
-  };
+  const segmentSafe = (a: Point2, b: Point2) => safe(a) && safe(b) && !segmentCollides(a, b, obstacles, radius);
   const [sx, sz] = toCell(start), [gx, gz] = toCell(goal);
   const valid = (x: number, z: number) => x >= 0 && z >= 0 && x <= count && z <= count && safe(toWorld(x, z));
   if (!safe(start) || !safe(goal) || !valid(sx, sz) || !valid(gx, gz) ||

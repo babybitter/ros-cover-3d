@@ -5,6 +5,7 @@ import { stepMotion } from './MotionModel';
 import { stepNavigation } from './NavigationMotion';
 import { SensorSimulator } from './SensorSimulator';
 import type { Point2, VehicleState } from '../types';
+import { activeMap, collisionObstacles } from '../stores/environmentStore';
 
 /** Mutable frame state avoids publishing React updates at display refresh rate. */
 export const runtime = { vehicle: useSimulation.getState().vehicle, elapsed: 0, ticks: 0 };
@@ -17,6 +18,7 @@ export function updateSimulation(rawDelta: number) {
   const s = useSimulation.getState();
   if (s.vehicle !== observedVehicle) { runtime.vehicle = s.vehicle; observedVehicle = s.vehicle; runtime.elapsed = s.elapsed; }
   if (s.paused) return;
+  const obstacles = collisionObstacles(s.obstacles), map = activeMap();
   const dt = Math.max(0, Math.min(rawDelta, 0.25)) * s.timeScale;
   runtime.elapsed += dt;
   let input = { ...s.input };
@@ -42,7 +44,7 @@ export function updateSimulation(rawDelta: number) {
     const next = navigationTarget && !s.emergency
       ? stepNavigation(v, navigationTarget, dt / substeps, s.speedLimit)
       : stepMotion(v, input, dt / substeps, s.speedLimit);
-    const blocked = collides(next, s.obstacles, c.collisionRadius) || Math.abs(next.x) > c.map.max - c.collisionRadius || Math.abs(next.z) > c.map.max - c.collisionRadius;
+    const blocked = collides(next, obstacles, c.collisionRadius) || next.x > map.max - c.collisionRadius || next.x < map.min + c.collisionRadius || next.z > map.max - c.collisionRadius || next.z < map.min + c.collisionRadius;
     if (blocked && Math.abs(next.speed) > 0.001) {
       v = { ...v, speed: 0 };
       if (!collisionLocked) {
@@ -62,7 +64,7 @@ export function updateSimulation(rawDelta: number) {
   if (runtime.elapsed - published >= 0.1 || runtime.elapsed < published) {
     published = runtime.elapsed;
     sensor.threshold = s.threshold;
-    const sensors = sensor.sample(v, s.obstacles, runtime.elapsed);
+    const sensors = sensor.sample(v, obstacles, runtime.elapsed);
     s.patch({ vehicle: v, sensors, elapsed: runtime.elapsed });
     observedVehicle = v;
   }

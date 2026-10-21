@@ -3,10 +3,11 @@ import type { ControlInput, EditMode, LogEntry, NavigationStatus, Obstacle, Poin
 import { initialObstacles, roverConfig as c, type BodyMode, type DetailLevel } from '../config/roverConfig';
 import { initialVehicle } from '../simulation/MotionModel';
 import { planPath } from '../simulation/PathPlanner';
+import { activeMap, collisionObstacles } from './environmentStore';
 
 interface SimulationStore {
   vehicle: VehicleState; sensors: SensorReading; input: ControlInput; paused: boolean; emergency: boolean;
-  mode: 'manual' | 'auto'; speedLimit: number; elapsed: number; timeScale: number;
+  mode: 'manual' | 'auto'; speedLimit: number; elapsed: number; timeScale: number; resetRevision: number;
   view: ViewPreset; viewRevision: number; autoRotate: boolean; wireframe: boolean; showLidar: boolean; showGrid: boolean;
   exploded: boolean; cameraPan: number; threshold: number; components: Record<string, boolean>; selectedPart: string;
   bodyMode: BodyMode; detailLevel: DetailLevel;
@@ -27,7 +28,7 @@ const entry = (message: string, level: LogEntry['level'] = 'info'): LogEntry => 
 export const useSimulation = create<SimulationStore>((set, get) => ({
   vehicle: initialVehicle(), sensors: { lidar: [], frontDistance: 7, warning: 'clear', timestamp: 0 },
   input: { throttle: 0, steer: 0 }, paused: false, emergency: false, mode: 'manual',
-  speedLimit: 0.8, elapsed: 0, timeScale: 1,
+  speedLimit: 0.8, elapsed: 0, timeScale: 1, resetRevision: 0,
   view: 'perspective', viewRevision: 0, autoRotate: false, wireframe: false,
   showLidar: false, showGrid: true, exploded: false, cameraPan: 0, threshold: 2,
   bodyMode: 'full', detailLevel: 'detail',
@@ -46,11 +47,11 @@ export const useSimulation = create<SimulationStore>((set, get) => ({
     get().log(emergency ? '急停触发 · 驱动锁定' : '停止行驶', emergency ? 'warn' : 'info');
   },
   reset: () => {
-    set({ vehicle: initialVehicle(), input: { throttle: 0, steer: 0 }, emergency: false, elapsed: 0, paused: false, path: [], pathIndex: 1, navStatus: 'idle', mode: 'manual' });
+    set(s => ({ vehicle: initialVehicle(), input: { throttle: 0, steer: 0 }, emergency: false, elapsed: 0, paused: false, path: [], pathIndex: 1, navStatus: 'idle', mode: 'manual', resetRevision: s.resetRevision + 1 }));
     get().setView('perspective'); get().log('车辆位置与仿真时钟已复位');
   },
   plan: () => {
-    const s = get(), result = planPath(c.map, s.vehicle, s.goal, s.obstacles, c.collisionRadius + 0.12);
+    const s = get(), result = planPath(activeMap(), s.vehicle, s.goal, collisionObstacles(s.obstacles), c.collisionRadius + 0.12);
     set({ path: result.path, pathIndex: 1, navStatus: result.path.length ? 'ready' : 'blocked', showObstacles: true, mode: 'manual', input: { throttle: 0, steer: 0 } });
     get().log(result.path.length ? `A* 规划完成 · ${result.path.length} 个路径节点 · 搜索 ${result.visited} 格` : result.reason!, result.path.length ? 'success' : 'warn');
   },
