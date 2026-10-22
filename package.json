@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "node scripts/verify-browser.mjs",
+    "test:assembly": "node scripts/verify-assembly.mjs",
     "test:mapping": "node scripts/verify-mapping.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },

@@ -29,12 +29,11 @@ function Tread() {
 }
 export function Wheel({ x, side }: { x: number; side: number }) {
   const steer = useRef<THREE.Group>(null!), rotation = useRef<THREE.Group>(null!);
-  const exploded = useSimulation(s => s.exploded);
   useFrame(() => {
     steer.current.rotation.y = x > 0 ? -runtime.vehicle.steering : 0;
     rotation.current.rotation.z = -runtime.vehicle.wheelAngle;
   });
-  return <group ref={steer} name={`steering-${x}-${side}`} position={[x, c.wheelRadius, side * (c.track / 2 + (exploded ? 0.55 : 0))]}>
+  return <group ref={steer} name={`steering-${x}-${side}`} position={[x, c.wheelRadius, side * c.track / 2]}>
     <group ref={rotation} name={`wheel-spin-${x}-${side}`}>
       <Cylinder radius={0.398} length={0.29} material="rubber" rotation={[Math.PI / 2, 0, 0]} />
       <Tread />

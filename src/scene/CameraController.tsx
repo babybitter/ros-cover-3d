@@ -27,7 +27,10 @@ export function CameraController() {
     const offset = new THREE.Vector3(...offsets[view]);
     if (campus && view === 'perspective') offset.set(11, 8, 12);
     if (view === 'top') offset.y = campus ? 250 : useSimulation.getState().showObstacles ? 35 : 10;
-    if (view !== 'camera') offset.multiplyScalar(Math.max(1, 0.95 / (size.width / size.height)));
+    if (view !== 'camera') {
+      const framing = size.width < 600 ? 1.12 : 0.95;
+      offset.multiplyScalar(Math.max(1, framing / (size.width / size.height)));
+    }
     const mapTop = campus && view === 'top';
     destination.current.copy(offset).add(new THREE.Vector3(mapTop ? 0 : v.x, 0, mapTop ? 0 : v.z));
     target.current.set(mapTop ? 0 : v.x, 0.85, mapTop ? 0 : v.z);

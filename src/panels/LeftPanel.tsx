@@ -2,6 +2,7 @@ import { Box as BoxIcon, ChevronDown, ChevronRight, CircleDot, Cpu, Eye, EyeOff,
 import { useSimulation } from '../stores/simulationStore';
 import { PanelTitle, Toggle } from '../components/UI';
 import { ModelDisplayControls } from '../components/ModelDisplayControls';
+import { AssemblyControls } from '../components/AssemblyControls';
 
 const parts = [
   { id: 'chassis', name: '车体与金属底盘', icon: BoxIcon, count: '01' },
@@ -13,7 +14,7 @@ const parts = [
 ];
 export function LeftPanel() {
   const components = useSimulation(s => s.components), selected = useSimulation(s => s.selectedPart);
-  const grid = useSimulation(s => s.showGrid), obstacles = useSimulation(s => s.showObstacles), exploded = useSimulation(s => s.exploded);
+  const grid = useSimulation(s => s.showGrid), obstacles = useSimulation(s => s.showObstacles);
   const patch = useSimulation(s => s.patch), wireframe = useSimulation(s => s.wireframe);
   return <aside className="left-panel">
     <PanelTitle aside={<span className="tiny-label">ASSEMBLY</span>}>模型结构</PanelTitle>
@@ -30,7 +31,7 @@ export function LeftPanel() {
       <ModelDisplayControls />
       <div className="setting-row"><span><ScanLine size={14} />地面网格</span><Toggle label="地面网格" checked={grid} onChange={() => patch({ showGrid: !grid })} /></div>
       <div className="setting-row"><span><BoxIcon size={14} />环境障碍物</span><Toggle label="环境障碍物" checked={obstacles} onChange={() => patch({ showObstacles: !obstacles })} /></div>
-      <div className="setting-row"><span><Layers3 size={14} />结构分解</span><Toggle label="结构分解" checked={exploded} onChange={() => patch({ exploded: !exploded })} /></div>
+      <AssemblyControls />
       <div className="setting-row"><span><Unplug size={14} />线框显示</span><Toggle label="线框显示" checked={wireframe} onChange={() => patch({ wireframe: !wireframe })} /></div>
     </div>
     <div className="sidebar-section specification">

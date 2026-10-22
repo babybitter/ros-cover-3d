@@ -100,6 +100,7 @@ try {
     window.__roverQA = {
       ...await loaded('/src/simulation/VehicleController.ts'),
       ...await loaded('/src/stores/simulationStore.ts'),
+      ...await loaded('/src/stores/assemblyStore.ts'),
       ...await loaded('/node_modules/.vite/deps/@react-three_fiber.js'),
       ...await loaded('/node_modules/.vite/deps/three.js'),
     };
@@ -189,9 +190,10 @@ try {
   report.model.resources = { before: resourceStart.memory, after: resourceEnd.memory, cycles: 3 };
   if (resourceEnd.memory.geometries > resourceStart.memory.geometries + 5 || resourceEnd.memory.textures > resourceStart.memory.textures + 1) throw new Error('Repeated model switches retain GPU resources');
   await page.getByRole('switch', { name: '结构分解', exact: true }).click();
-  await waitForFrames(3);
+  await page.waitForFunction(() => !window.__roverQA.assemblyAnimation.playing, null, { timeout: 90000 });
   await capture('exploded');
   await page.getByRole('switch', { name: '结构分解', exact: true }).click();
+  await page.waitForFunction(() => !window.__roverQA.assemblyAnimation.playing, null, { timeout: 90000 });
   await page.getByRole('button', { name: '性能档位', exact: true }).click();
   await page.getByRole('button', { name: '恢复默认视角', exact: true }).click();
   await page.evaluate(() => document.activeElement?.blur());
