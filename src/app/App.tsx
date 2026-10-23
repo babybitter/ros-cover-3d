@@ -41,7 +41,7 @@ export function App() {
   return <div className="app-shell">
     <header className="app-header">
       <a className="brand" href="#" onClick={e => { e.preventDefault(); changeTab('model'); }}><span className="brand-symbol"><Layers3 size={24} strokeWidth={2.2} /></span><span className="brand-word">ZXAJ<span className="brand-period">.</span></span></a>
-      <div className="header-divider" /><div className="project-name"><strong>无人车仿真平台</strong><span>ROBOTICS SIMULATION WORKBENCH</span></div>
+      <div className="header-divider" /><div className="project-name"><strong>实机建模演示平台</strong><span>ROBOTICS SIMULATION WORKBENCH</span></div>
       <div className="header-center"><span className={`status-indicator ${emergency ? 'danger' : paused ? 'paused' : ''}`} /><span>{emergency ? '急停锁定' : paused ? '仿真已暂停' : '仿真运行中'}</span><span className="environment-tag">LOCAL</span></div>
       <div className="header-actions"><span className="sim-clock"><Clock3 size={13} />{formatTime(elapsed)}</span><div className="header-divider" /><IconButton label={paused ? '继续仿真' : '暂停仿真'} icon={paused ? Play : Pause} active={!paused} onClick={() => patch({ paused: !paused })} /><IconButton label="重置仿真" icon={RotateCcw} onClick={() => useSimulation.getState().reset()} /><IconButton label="全屏" icon={Expand} onClick={fullscreen} /><IconButton label="操作说明" icon={CircleHelp} onClick={() => setHelp(true)} /></div>
     </header>
